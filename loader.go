@@ -19,6 +19,7 @@ package envldr
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
@@ -122,9 +123,9 @@ func LoadEnv(itf interface{}) error {
 			t := reflect.TypeOf(itf).Elem()
 			return loadEnv(t, v)
 		} else {
-			panic("must be struct")
+			panic(fmt.Sprintf("'%s' provided but '%s' required", v.Kind(), reflect.Struct))
 		}
 	} else {
-		panic("must be pointer")
+		panic(fmt.Sprintf("'%s' provided but '%s' required", v.Kind(), reflect.Ptr))
 	}
 }
