@@ -116,10 +116,10 @@ func loadEnv(t reflect.Type, v reflect.Value) (err error) {
 	return
 }
 
-func LoadEnv(c interface{}) error {
-	if v := reflect.ValueOf(c); v.Kind() == reflect.Ptr {
+func LoadEnv(itf interface{}) error {
+	if v := reflect.ValueOf(itf); v.Kind() == reflect.Ptr {
 		if v = v.Elem(); v.Kind() == reflect.Struct {
-			t := reflect.TypeOf(c).Elem()
+			t := reflect.TypeOf(itf).Elem()
 			return loadEnv(t, v)
 		} else {
 			panic("must be struct")
