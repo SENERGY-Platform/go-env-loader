@@ -85,7 +85,7 @@ func setField(field reflect.Value, value string) (err error) {
 		case reflect.String:
 			v = value
 		default:
-			err = errors.New("unsupported type")
+			err = errors.New(fmt.Sprintf("'%s' not supported", field.Kind()))
 		}
 		if err != nil {
 			return
