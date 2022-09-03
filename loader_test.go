@@ -67,27 +67,40 @@ type TestSubStruct struct {
 }
 
 type TestStruct struct {
-	Var1 string            `env_var:"VAR_1"`
-	Var2 int64             `env_var:"VAR_2"`
-	Var3 float64           `env_var:"VAR_3"`
-	Var4 []string          `env_var:"VAR_4"`
-	Var5 map[string]string `env_var:"VAR_5"`
-	Var6 []TestItem        `env_var:"VAR_6"`
-	Var7 TestSubStruct     `env_var:"VAR_7"`
-	Var8 string
+	Var1  string            `env_var:"VAR_1"`
+	Var2  int               `env_var:"VAR_2"`
+	Var3  int8              `env_var:"VAR_3"`
+	Var4  int16             `env_var:"VAR_4"`
+	Var5  int32             `env_var:"VAR_5"`
+	Var6  int64             `env_var:"VAR_6"`
+	Var7  uint              `env_var:"VAR_7"`
+	Var8  uint8             `env_var:"VAR_8"`
+	Var9  uint16            `env_var:"VAR_9"`
+	Var10 uint32            `env_var:"VAR_10"`
+	Var11 uint64            `env_var:"VAR_11"`
+	Var12 float32           `env_var:"VAR_12"`
+	Var13 float64           `env_var:"VAR_13"`
+	Var14 []string          `env_var:"VAR_14"`
+	Var15 map[string]string `env_var:"VAR_15"`
+	Var16 []TestItem        `env_var:"VAR_16"`
+	Var17 TestSubStruct     `env_var:"VAR_17"`
+	Var18 string
+	Var19 complex64  `env_var:"VAR_19"`
+	Var20 complex128 `env_var:"VAR_20"`
 }
 
 const (
-	defaultString string  = "default"
-	testString    string  = "test"
-	testInt64     int64   = 1
-	testFloat64   float64 = 1.0
+	defaultString  string     = "default"
+	testString     string     = "test"
+	testInt64      int64      = 1
+	testFloat64    float64    = 1.0
+	testComplex128 complex128 = 2 - 3i
 )
 
 func newTestStruct() TestStruct {
 	return TestStruct{
-		Var1: defaultString,
-		Var8: defaultString,
+		Var1:  defaultString,
+		Var18: defaultString,
 	}
 }
 
@@ -137,34 +150,115 @@ func TestLoadString(t *testing.T) {
 	testValues(t, testCasesB)
 }
 
-func TestLoadInt64(t *testing.T) {
+func TestLoadInt(t *testing.T) {
+	intStr := strconv.FormatInt(testInt64, 10)
 	testCaseA := []TestCaseA{
 		{
-			a:   strconv.FormatInt(testInt64, 10),
+			a:   intStr,
 			env: "VAR_2",
+		},
+		{
+			a:   intStr,
+			env: "VAR_3",
+		},
+		{
+			a:   intStr,
+			env: "VAR_4",
+		},
+		{
+			a:   intStr,
+			env: "VAR_5",
+		},
+		{
+			a:   intStr,
+			env: "VAR_6",
+		},
+		{
+			a:   intStr,
+			env: "VAR_7",
+		},
+		{
+			a:   intStr,
+			env: "VAR_8",
+		},
+		{
+			a:   intStr,
+			env: "VAR_9",
+		},
+		{
+			a:   intStr,
+			env: "VAR_10",
+		},
+		{
+			a:   intStr,
+			env: "VAR_11",
 		},
 	}
 	testStruct := initTestStruct(t, testCaseA)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var2,
+			want: int(testInt64),
+		},
+		{
+			b:    testStruct.Var3,
+			want: int8(testInt64),
+		},
+		{
+			b:    testStruct.Var4,
+			want: int16(testInt64),
+		},
+		{
+			b:    testStruct.Var5,
+			want: int32(testInt64),
+		},
+		{
+			b:    testStruct.Var6,
 			want: testInt64,
+		},
+		{
+			b:    testStruct.Var7,
+			want: uint(testInt64),
+		},
+		{
+			b:    testStruct.Var8,
+			want: uint8(testInt64),
+		},
+		{
+			b:    testStruct.Var9,
+			want: uint16(testInt64),
+		},
+		{
+			b:    testStruct.Var10,
+			want: uint32(testInt64),
+		},
+		{
+			b:    testStruct.Var11,
+			want: uint64(testInt64),
 		},
 	}
 	testValues(t, testCasesB)
 }
 
-func TestLoadFloat64(t *testing.T) {
+func TestLoadFloat(t *testing.T) {
 	testCaseA := []TestCaseA{
 		{
+			a:   strconv.FormatFloat(testFloat64, 'f', 1, 32),
+			env: "VAR_12",
+		},
+		{
 			a:   strconv.FormatFloat(testFloat64, 'f', 1, 64),
-			env: "VAR_3",
+			env: "VAR_13",
 		},
 	}
 	testStruct := initTestStruct(t, testCaseA)
 	testCasesB := []TestCaseB{
 		{
-			b:    testStruct.Var3,
+			b:    testStruct.Var12,
+			want: float32(testFloat64),
+		},
+		{
+			b:    testStruct.Var13,
 			want: testFloat64,
 		},
 	}
@@ -180,13 +274,13 @@ func TestLoadSlice(t *testing.T) {
 	testCaseA := []TestCaseA{
 		{
 			a:   string(testSliceByte),
-			env: "VAR_4",
+			env: "VAR_14",
 		},
 	}
 	testStruct := initTestStruct(t, testCaseA)
 	testCasesB := []TestCaseB{
 		{
-			b:    testStruct.Var4,
+			b:    testStruct.Var14,
 			want: testSlice,
 		},
 	}
@@ -202,13 +296,13 @@ func TestLoadMap(t *testing.T) {
 	testCaseA := []TestCaseA{
 		{
 			a:   string(testMapByte),
-			env: "VAR_5",
+			env: "VAR_15",
 		},
 	}
 	testStruct := initTestStruct(t, testCaseA)
 	testCasesB := []TestCaseB{
 		{
-			b:    testStruct.Var5,
+			b:    testStruct.Var15,
 			want: testMap,
 		},
 	}
@@ -224,13 +318,13 @@ func TestLoadStructSlice(t *testing.T) {
 	testCaseA := []TestCaseA{
 		{
 			a:   string(testStructSliceByte),
-			env: "VAR_6",
+			env: "VAR_16",
 		},
 	}
 	testStruct := initTestStruct(t, testCaseA)
 	testCasesB := []TestCaseB{
 		{
-			b:    testStruct.Var6,
+			b:    testStruct.Var16,
 			want: testStructSlice,
 		},
 	}
@@ -246,13 +340,13 @@ func TestLoadStruct(t *testing.T) {
 	testCaseA := []TestCaseA{
 		{
 			a:   string(testStructByte),
-			env: "VAR_7",
+			env: "VAR_17",
 		},
 	}
 	testStruct := initTestStruct(t, testCaseA)
 	testCasesB := []TestCaseB{
 		{
-			b:    testStruct.Var7,
+			b:    testStruct.Var17,
 			want: testSubStruct,
 		},
 	}
@@ -269,7 +363,7 @@ func TestLoadSubStructVar(t *testing.T) {
 	testStruct := initTestStruct(t, testCasesA)
 	testCasesB := []TestCaseB{
 		{
-			b:    testStruct.Var7.Var,
+			b:    testStruct.Var17.Var,
 			want: testString,
 		},
 	}
@@ -280,14 +374,39 @@ func TestLoadNoTag(t *testing.T) {
 	testCasesA := []TestCaseA{
 		{
 			a:   testString,
-			env: "VAR_8",
+			env: "VAR_18",
 		},
 	}
 	testStruct := initTestStruct(t, testCasesA)
 	testCasesB := []TestCaseB{
 		{
-			b:    testStruct.Var8,
+			b:    testStruct.Var18,
 			want: defaultString,
+		},
+	}
+	testValues(t, testCasesB)
+}
+
+func TestLoadComplex(t *testing.T) {
+	testCaseA := []TestCaseA{
+		{
+			a:   strconv.FormatComplex(testComplex128, 'f', 1, 64),
+			env: "VAR_19",
+		},
+		{
+			a:   strconv.FormatComplex(testComplex128, 'f', 1, 128),
+			env: "VAR_20",
+		},
+	}
+	testStruct := initTestStruct(t, testCaseA)
+	testCasesB := []TestCaseB{
+		{
+			b:    testStruct.Var19,
+			want: complex64(testComplex128),
+		},
+		{
+			b:    testStruct.Var20,
+			want: testComplex128,
 		},
 	}
 	testValues(t, testCasesB)
