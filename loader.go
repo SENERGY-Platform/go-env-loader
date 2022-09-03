@@ -18,6 +18,7 @@ package envldr
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"reflect"
 	"strconv"
@@ -82,6 +83,8 @@ func setField(field reflect.Value, value string) (err error) {
 			return
 		case reflect.String:
 			v = value
+		default:
+			err = errors.New("unsupported type")
 		}
 		if err != nil {
 			return
