@@ -5,7 +5,7 @@ go-env-loader
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/y-du/go-env-loader/Tests?label=tests)](https://github.com/y-du/go-env-loader/actions/workflows/tests.yml)
 
 
-Load struct field values from environment variables defined via tags. Supports basic types, slices, maps and structs!
+Load values for struct fields from environment variables defined via tags. Supports basic types, slices, maps and structs!
 
 Quickstart
 ---
