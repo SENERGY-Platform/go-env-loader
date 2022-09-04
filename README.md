@@ -72,7 +72,7 @@ Analogous to slices and maps, struct types can also be loaded from environment:
 export DB_CONFIG='{"Host": "somedb", "Port": 4021}'
 ```
 
-The tags `DB_HOST` and `DB_PORT` set in `DatabaseConfig` are now ignored:
+The tag values `DB_HOST` and `DB_PORT` set in `DatabaseConfig` are now ignored:
 
 ```go
         fmt.Printf("%#v\n", config)
