@@ -18,7 +18,6 @@ package envldr
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -27,101 +26,163 @@ import (
 
 const tag = "env_var"
 
-func setField(field reflect.Value, value string) (err error) {
-	if field.IsValid() {
-		var v interface{}
-		var ui uint64
-		var i int64
-		var f float64
-		var c complex128
-		switch field.Kind() {
-		case reflect.Uint:
-			ui, err = strconv.ParseUint(value, 10, 0)
-			v = uint(ui)
-		case reflect.Uint8:
-			ui, err = strconv.ParseUint(value, 10, 8)
-			v = uint8(ui)
-		case reflect.Uint16:
-			ui, err = strconv.ParseUint(value, 10, 16)
-			v = uint16(ui)
-		case reflect.Uint32:
-			ui, err = strconv.ParseUint(value, 10, 32)
-			v = uint32(ui)
-		case reflect.Uint64:
-			v, err = strconv.ParseUint(value, 10, 64)
-		case reflect.Int:
-			i, err = strconv.ParseInt(value, 10, 0)
-			v = int(i)
-		case reflect.Int8:
-			i, err = strconv.ParseInt(value, 10, 8)
-			v = int8(i)
-		case reflect.Int16:
-			i, err = strconv.ParseInt(value, 10, 16)
-			v = int16(i)
-		case reflect.Int32:
-			i, err = strconv.ParseInt(value, 10, 32)
-			v = int32(i)
-		case reflect.Int64:
-			v, err = strconv.ParseInt(value, 10, 64)
-		case reflect.Float32:
-			f, err = strconv.ParseFloat(value, 32)
-			v = float32(f)
-		case reflect.Float64:
-			v, err = strconv.ParseFloat(value, 64)
-		case reflect.Complex64:
-			c, err = strconv.ParseComplex(value, 64)
-			v = complex64(c)
-		case reflect.Complex128:
-			v, err = strconv.ParseComplex(value, 128)
-		case reflect.Bool:
-			v, err = strconv.ParseBool(value)
-		case reflect.Slice, reflect.Map, reflect.Struct:
-			x := reflect.New(field.Type())
-			if err = json.Unmarshal([]byte(value), x.Interface()); err != nil {
-				return
-			}
-			field.Set(x.Elem())
-			return
-		case reflect.String:
-			v = value
-		default:
-			err = errors.New(fmt.Sprintf("'%s' not supported", field.Kind()))
-		}
-		if err != nil {
-			return
-		}
-		field.Set(reflect.ValueOf(v))
-	}
-	return
+type parser func(t reflect.Type, val string) (interface{}, error)
+
+var intBitSizeMap = map[reflect.Kind]int{
+	reflect.Int:    0,
+	reflect.Int16:  16,
+	reflect.Int32:  32,
+	reflect.Int64:  64,
+	reflect.Uint:   0,
+	reflect.Uint16: 16,
+	reflect.Uint32: 32,
+	reflect.Uint64: 64,
 }
 
-func getEnv(t reflect.Type, i int) (val string, ok bool) {
-	if val, ok = t.Field(i).Tag.Lookup(tag); ok {
+var floatBitSizeMap = map[reflect.Kind]int{
+	reflect.Float32: 32,
+	reflect.Float64: 64,
+}
+
+var complexBitSizeMap = map[reflect.Kind]int{
+	reflect.Complex64:  64,
+	reflect.Complex128: 128,
+}
+
+var intParser parser = func(t reflect.Type, val string) (interface{}, error) {
+	i, err := strconv.ParseInt(val, 10, intBitSizeMap[t.Kind()])
+	if t.Kind() == reflect.Int64 {
+		return i, err
+	} else {
+		return reflect.ValueOf(i).Convert(t).Interface(), err
+	}
+}
+
+var uintParser parser = func(t reflect.Type, val string) (interface{}, error) {
+	i, err := strconv.ParseUint(val, 10, intBitSizeMap[t.Kind()])
+	if t.Kind() == reflect.Uint64 {
+		return i, err
+	} else {
+		return reflect.ValueOf(i).Convert(t).Interface(), err
+	}
+}
+
+var floatParser parser = func(t reflect.Type, val string) (interface{}, error) {
+	f, err := strconv.ParseFloat(val, floatBitSizeMap[t.Kind()])
+	if t.Kind() == reflect.Float64 {
+		return f, err
+	} else {
+		return reflect.ValueOf(f).Convert(t).Interface(), err
+	}
+}
+
+var complexParser parser = func(t reflect.Type, val string) (interface{}, error) {
+	c, err := strconv.ParseComplex(val, complexBitSizeMap[t.Kind()])
+	if t.Kind() == reflect.Complex128 {
+		return c, err
+	} else {
+		return reflect.ValueOf(c).Convert(t).Interface(), err
+	}
+}
+
+var jsonParser parser = func(t reflect.Type, val string) (interface{}, error) {
+	v := reflect.New(t)
+	err := json.Unmarshal([]byte(val), v.Interface())
+	return v.Interface(), err
+}
+
+var parsers = map[reflect.Kind]parser{
+	reflect.Uint:       uintParser,
+	reflect.Uint8:      uintParser,
+	reflect.Uint16:     uintParser,
+	reflect.Uint32:     uintParser,
+	reflect.Uint64:     uintParser,
+	reflect.Int:        intParser,
+	reflect.Int8:       intParser,
+	reflect.Int16:      intParser,
+	reflect.Int32:      intParser,
+	reflect.Int64:      intParser,
+	reflect.Float32:    floatParser,
+	reflect.Float64:    floatParser,
+	reflect.Complex64:  complexParser,
+	reflect.Complex128: complexParser,
+	reflect.Bool: func(t reflect.Type, val string) (interface{}, error) {
+		return strconv.ParseBool(val)
+	},
+	reflect.String: func(t reflect.Type, val string) (interface{}, error) {
+		return val, nil
+	},
+	reflect.Slice:  jsonParser,
+	reflect.Map:    jsonParser,
+	reflect.Struct: jsonParser,
+}
+
+func getEnv(st reflect.StructField) (val string, ok bool) {
+	if val, ok = st.Tag.Lookup(tag); ok {
 		val, ok = os.LookupEnv(val)
 	}
 	return
 }
 
-func loadEnv(t reflect.Type, v reflect.Value) (err error) {
-	for i := 0; i < t.NumField(); i++ {
-		if val, ok := getEnv(t, i); ok {
-			if err = setField(v.Field(i), val); err != nil {
-				return
+func loadEnv(v reflect.Value) error {
+	for i := 0; i < v.Type().NumField(); i++ {
+		structField := v.Type().Field(i)
+		if structField.PkgPath == "" {
+			fieldValue := v.Field(i)
+			isNilPtr := false
+			if fieldValue.Kind() == reflect.Ptr {
+				if fieldValue.IsNil() {
+					isNilPtr = true
+				} else {
+					fieldValue = fieldValue.Elem()
+				}
 			}
-		} else if v.Field(i).Kind() == reflect.Struct {
-			if err = loadEnv(t.Field(i).Type, v.Field(i)); err != nil {
-				return
+			if envVal, ok := getEnv(structField); ok {
+				fieldType := fieldValue.Type()
+				if isNilPtr {
+					fieldType = fieldValue.Type().Elem()
+					fieldValue.Set(reflect.New(fieldType))
+					fieldValue = fieldValue.Elem()
+				}
+				if p, k := parsers[fieldType.Kind()]; k {
+					if itf, err := p(fieldType, envVal); err != nil {
+						return err
+					} else {
+						itfValue := reflect.Indirect(reflect.ValueOf(itf))
+						fieldValue.Set(itfValue)
+					}
+				}
+
+			} else {
+				if isNilPtr && fieldValue.Type().Elem().Kind() == reflect.Struct {
+					var hasEnvVal bool
+					for x := 0; x < fieldValue.Type().Elem().NumField(); x++ {
+						st := fieldValue.Type().Elem().Field(x)
+						if _, k := getEnv(st); k {
+							hasEnvVal = true
+							break
+						}
+					}
+					if hasEnvVal {
+						fieldValue.Set(reflect.New(fieldValue.Type().Elem()))
+						fieldValue = fieldValue.Elem()
+					}
+				}
+				if fieldValue.Kind() == reflect.Struct {
+					if err := loadEnv(fieldValue); err != nil {
+						return err
+					}
+				}
 			}
 		}
 	}
-	return
+	return nil
 }
 
 func LoadEnv(itf interface{}) error {
 	if v := reflect.ValueOf(itf); v.Kind() == reflect.Ptr {
 		if v = v.Elem(); v.Kind() == reflect.Struct {
-			t := reflect.TypeOf(itf).Elem()
-			return loadEnv(t, v)
+			return loadEnv(v)
 		} else {
 			panic(fmt.Sprintf("'%s' provided but '%s' required", v.Kind(), reflect.Struct))
 		}
