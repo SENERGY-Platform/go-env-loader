@@ -63,33 +63,61 @@ type TestItem struct {
 }
 
 type TestSubStruct struct {
-	Var string `env_var:"SUB_VAR"`
+	Var       string  `env_var:"SUB_VAR"`
+	VarPtr    *string `env_var:"SUB_VAR"`
+	VarNilPtr *string `env_var:"SUB_VAR"`
 }
 
 type TestStruct struct {
-	Var1  string            `env_var:"VAR_1"`
-	Var2  int               `env_var:"VAR_2"`
-	Var3  int8              `env_var:"VAR_3"`
-	Var4  int16             `env_var:"VAR_4"`
-	Var5  int32             `env_var:"VAR_5"`
-	Var6  int64             `env_var:"VAR_6"`
-	Var7  uint              `env_var:"VAR_7"`
-	Var8  uint8             `env_var:"VAR_8"`
-	Var9  uint16            `env_var:"VAR_9"`
-	Var10 uint32            `env_var:"VAR_10"`
-	Var11 uint64            `env_var:"VAR_11"`
-	Var12 float32           `env_var:"VAR_12"`
-	Var13 float64           `env_var:"VAR_13"`
-	Var14 []string          `env_var:"VAR_14"`
-	Var15 map[string]string `env_var:"VAR_15"`
-	Var16 []TestItem        `env_var:"VAR_16"`
-	Var17 TestSubStruct     `env_var:"VAR_17"`
-	Var18 string
-	Var19 complex64  `env_var:"VAR_19"`
-	Var20 complex128 `env_var:"VAR_20"`
+	Var1        string             `env_var:"VAR_1"`
+	Var1Ptr     *string            `env_var:"VAR_1"`
+	Var1NilPtr  *string            `env_var:"VAR_1"`
+	Var2        int                `env_var:"VAR_2"`
+	Var2Ptr     *int               `env_var:"VAR_2"`
+	Var2NilPtr  *int               `env_var:"VAR_2"`
+	Var3        int8               `env_var:"VAR_3"`
+	Var4        int16              `env_var:"VAR_4"`
+	Var5        int32              `env_var:"VAR_5"`
+	Var6        int64              `env_var:"VAR_6"`
+	Var6Ptr     *int64             `env_var:"VAR_6"`
+	Var6NilPtr  *int64             `env_var:"VAR_6"`
+	Var7        uint               `env_var:"VAR_7"`
+	Var7Ptr     *uint              `env_var:"VAR_7"`
+	Var7NilPtr  *uint              `env_var:"VAR_7"`
+	Var8        uint8              `env_var:"VAR_8"`
+	Var9        uint16             `env_var:"VAR_9"`
+	Var10       uint32             `env_var:"VAR_10"`
+	Var11       uint64             `env_var:"VAR_11"`
+	Var11Ptr    *uint64            `env_var:"VAR_11"`
+	Var11NilPtr *uint64            `env_var:"VAR_11"`
+	Var12       float32            `env_var:"VAR_12"`
+	Var12Ptr    *float32           `env_var:"VAR_12"`
+	Var12NilPtr *float32           `env_var:"VAR_12"`
+	Var13       float64            `env_var:"VAR_13"`
+	Var13Ptr    *float64           `env_var:"VAR_13"`
+	Var13NilPtr *float64           `env_var:"VAR_13"`
+	Var14       []string           `env_var:"VAR_14"`
+	Var14Ptr    *[]string          `env_var:"VAR_14"`
+	Var14NilPtr *[]string          `env_var:"VAR_14"`
+	Var15       map[string]string  `env_var:"VAR_15"`
+	Var15Ptr    *map[string]string `env_var:"VAR_15"`
+	Var15NilPtr *map[string]string `env_var:"VAR_15"`
+	Var16       []TestItem         `env_var:"VAR_16"`
+	Var16Ptr    *[]TestItem        `env_var:"VAR_16"`
+	Var16NilPtr *[]TestItem        `env_var:"VAR_16"`
+	Var17       TestSubStruct      `env_var:"VAR_17"`
+	Var17Ptr    *TestSubStruct     `env_var:"VAR_17"`
+	Var17NilPtr *TestSubStruct     `env_var:"VAR_17"`
+	Var18       string
+	Var19       complex64   `env_var:"VAR_19"`
+	Var19Ptr    *complex64  `env_var:"VAR_19"`
+	Var19NilPtr *complex64  `env_var:"VAR_19"`
+	Var20       complex128  `env_var:"VAR_20"`
+	Var20Ptr    *complex128 `env_var:"VAR_20"`
+	Var20NilPtr *complex128 `env_var:"VAR_20"`
 }
 
-const (
+var (
 	defaultString  string     = "default"
 	testString     string     = "test"
 	testInt64      int64      = 1
@@ -98,9 +126,31 @@ const (
 )
 
 func newTestStruct() TestStruct {
+	testString := defaultString
+	testInt := int(testInt64)
+	testInt64 := testInt64
+	testUint := uint(testInt64)
+	testUint64 := uint64(testInt64)
+	testFloat32 := float32(testFloat64)
+	testFloat64 := testFloat64
+	testComplex64 := complex64(testComplex128)
+	testComplex128 := testComplex128
 	return TestStruct{
-		Var1:  defaultString,
-		Var18: defaultString,
+		Var1:     defaultString,
+		Var1Ptr:  &testString,
+		Var2Ptr:  &testInt,
+		Var6Ptr:  &testInt64,
+		Var7Ptr:  &testUint,
+		Var11Ptr: &testUint64,
+		Var12Ptr: &testFloat32,
+		Var13Ptr: &testFloat64,
+		Var14Ptr: &[]string{defaultString},
+		Var15Ptr: &map[string]string{defaultString: defaultString},
+		Var16Ptr: &[]TestItem{{Var: defaultString}},
+		Var17Ptr: &TestSubStruct{Var: defaultString, VarPtr: &testString},
+		Var18:    defaultString,
+		Var19Ptr: &testComplex64,
+		Var20Ptr: &testComplex128,
 	}
 }
 
@@ -144,6 +194,14 @@ func TestLoadString(t *testing.T) {
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var1,
+			want: testString,
+		},
+		{
+			b:    *testStruct.Var1Ptr,
+			want: testString,
+		},
+		{
+			b:    *testStruct.Var1NilPtr,
 			want: testString,
 		},
 	}
@@ -201,6 +259,14 @@ func TestLoadInt(t *testing.T) {
 			want: int(testInt64),
 		},
 		{
+			b:    *testStruct.Var2Ptr,
+			want: int(testInt64),
+		},
+		{
+			b:    *testStruct.Var2NilPtr,
+			want: int(testInt64),
+		},
+		{
 			b:    testStruct.Var3,
 			want: int8(testInt64),
 		},
@@ -217,7 +283,23 @@ func TestLoadInt(t *testing.T) {
 			want: testInt64,
 		},
 		{
+			b:    *testStruct.Var6Ptr,
+			want: testInt64,
+		},
+		{
+			b:    *testStruct.Var6NilPtr,
+			want: testInt64,
+		},
+		{
 			b:    testStruct.Var7,
+			want: uint(testInt64),
+		},
+		{
+			b:    *testStruct.Var7Ptr,
+			want: uint(testInt64),
+		},
+		{
+			b:    *testStruct.Var7NilPtr,
 			want: uint(testInt64),
 		},
 		{
@@ -234,6 +316,14 @@ func TestLoadInt(t *testing.T) {
 		},
 		{
 			b:    testStruct.Var11,
+			want: uint64(testInt64),
+		},
+		{
+			b:    *testStruct.Var11Ptr,
+			want: uint64(testInt64),
+		},
+		{
+			b:    *testStruct.Var11NilPtr,
 			want: uint64(testInt64),
 		},
 	}
@@ -258,7 +348,23 @@ func TestLoadFloat(t *testing.T) {
 			want: float32(testFloat64),
 		},
 		{
+			b:    *testStruct.Var12Ptr,
+			want: float32(testFloat64),
+		},
+		{
+			b:    *testStruct.Var12NilPtr,
+			want: float32(testFloat64),
+		},
+		{
 			b:    testStruct.Var13,
+			want: testFloat64,
+		},
+		{
+			b:    *testStruct.Var13Ptr,
+			want: testFloat64,
+		},
+		{
+			b:    *testStruct.Var13NilPtr,
 			want: testFloat64,
 		},
 	}
@@ -283,6 +389,14 @@ func TestLoadSlice(t *testing.T) {
 			b:    testStruct.Var14,
 			want: testSlice,
 		},
+		{
+			b:    *testStruct.Var14Ptr,
+			want: testSlice,
+		},
+		{
+			b:    *testStruct.Var14NilPtr,
+			want: testSlice,
+		},
 	}
 	testValues(t, testCasesB)
 }
@@ -303,6 +417,14 @@ func TestLoadMap(t *testing.T) {
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var15,
+			want: testMap,
+		},
+		{
+			b:    *testStruct.Var15Ptr,
+			want: testMap,
+		},
+		{
+			b:    *testStruct.Var15NilPtr,
 			want: testMap,
 		},
 	}
@@ -327,12 +449,20 @@ func TestLoadStructSlice(t *testing.T) {
 			b:    testStruct.Var16,
 			want: testStructSlice,
 		},
+		{
+			b:    *testStruct.Var16Ptr,
+			want: testStructSlice,
+		},
+		{
+			b:    *testStruct.Var16NilPtr,
+			want: testStructSlice,
+		},
 	}
 	testValues(t, testCasesB)
 }
 
 func TestLoadStruct(t *testing.T) {
-	testSubStruct := TestSubStruct{Var: testString}
+	testSubStruct := TestSubStruct{Var: testString, VarPtr: &testString}
 	testStructByte, err := json.Marshal(testSubStruct)
 	if err != nil {
 		panic(err)
@@ -347,6 +477,14 @@ func TestLoadStruct(t *testing.T) {
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var17,
+			want: testSubStruct,
+		},
+		{
+			b:    *testStruct.Var17Ptr,
+			want: testSubStruct,
+		},
+		{
+			b:    *testStruct.Var17NilPtr,
 			want: testSubStruct,
 		},
 	}
@@ -364,6 +502,26 @@ func TestLoadSubStructVar(t *testing.T) {
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var17.Var,
+			want: testString,
+		},
+		{
+			b:    *testStruct.Var17.VarNilPtr,
+			want: testString,
+		},
+		{
+			b:    testStruct.Var17Ptr.Var,
+			want: testString,
+		},
+		{
+			b:    *testStruct.Var17Ptr.VarNilPtr,
+			want: testString,
+		},
+		{
+			b:    testStruct.Var17NilPtr.Var,
+			want: testString,
+		},
+		{
+			b:    *testStruct.Var17NilPtr.VarNilPtr,
 			want: testString,
 		},
 	}
@@ -405,7 +563,23 @@ func TestLoadComplex(t *testing.T) {
 			want: complex64(testComplex128),
 		},
 		{
+			b:    *testStruct.Var19Ptr,
+			want: complex64(testComplex128),
+		},
+		{
+			b:    *testStruct.Var19NilPtr,
+			want: complex64(testComplex128),
+		},
+		{
 			b:    testStruct.Var20,
+			want: testComplex128,
+		},
+		{
+			b:    *testStruct.Var20Ptr,
+			want: testComplex128,
+		},
+		{
+			b:    *testStruct.Var20NilPtr,
 			want: testComplex128,
 		},
 	}
