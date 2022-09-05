@@ -115,6 +115,9 @@ type TestStruct struct {
 	Var20       complex128  `env_var:"VAR_20"`
 	Var20Ptr    *complex128 `env_var:"VAR_20"`
 	Var20NilPtr *complex128 `env_var:"VAR_20"`
+	Var21       bool        `env_var:"VAR_21"`
+	Var21Ptr    *bool       `env_var:"VAR_21"`
+	Var21NilPtr *bool       `env_var:"VAR_21"`
 }
 
 var (
@@ -123,6 +126,7 @@ var (
 	testInt64      int64      = 1
 	testFloat64    float64    = 1.0
 	testComplex128 complex128 = 2 - 3i
+	testBool       bool       = true
 )
 
 func newTestStruct() TestStruct {
@@ -135,6 +139,7 @@ func newTestStruct() TestStruct {
 	testFloat64 := testFloat64
 	testComplex64 := complex64(testComplex128)
 	testComplex128 := testComplex128
+	testBool := testBool
 	return TestStruct{
 		Var1:     defaultString,
 		Var1Ptr:  &testString,
@@ -151,6 +156,7 @@ func newTestStruct() TestStruct {
 		Var18:    defaultString,
 		Var19Ptr: &testComplex64,
 		Var20Ptr: &testComplex128,
+		Var21Ptr: &testBool,
 	}
 }
 
@@ -581,6 +587,31 @@ func TestLoadComplex(t *testing.T) {
 		{
 			b:    *testStruct.Var20NilPtr,
 			want: testComplex128,
+		},
+	}
+	testValues(t, testCasesB)
+}
+
+func TestLoadBool(t *testing.T) {
+	testCaseA := []TestCaseA{
+		{
+			a:   strconv.FormatBool(testBool),
+			env: "VAR_21",
+		},
+	}
+	testStruct := initTestStruct(t, testCaseA)
+	testCasesB := []TestCaseB{
+		{
+			b:    testStruct.Var21,
+			want: testBool,
+		},
+		{
+			b:    *testStruct.Var21Ptr,
+			want: testBool,
+		},
+		{
+			b:    *testStruct.Var21NilPtr,
+			want: testBool,
 		},
 	}
 	testValues(t, testCasesB)
