@@ -59,7 +59,7 @@ func testValues(t *testing.T, testCases []TestCaseB) {
 	}
 }
 
-var testTypeParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+var testTypeParser Parser = func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 	return time.ParseDuration(val)
 }
 
@@ -67,12 +67,20 @@ var testTypeParsers = map[reflect.Type]Parser{
 	reflect.TypeOf(time.Nanosecond): testTypeParser,
 }
 
-var testKindParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+var testKindParser Parser = func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 	return "prefix_" + val, nil
+}
+
+var testParserWithParams Parser = func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
+	a, _ := strconv.ParseInt(val, 10, 64)
+	b, _ := strconv.ParseInt(params[0], 10, 64)
+	c, _ := strconv.ParseInt(kwParams["k"], 10, 64)
+	return a + b + c, nil
 }
 
 var testKindParsers = map[reflect.Kind]Parser{
 	reflect.String: testKindParser,
+	reflect.Int64:  testParserWithParams,
 }
 
 type TestItem struct {
@@ -141,6 +149,7 @@ type TestStruct struct {
 	Var23       string         `env_var:"VAR_23"`
 	Var23Ptr    *string        `env_var:"VAR_23"`
 	Var23NilPtr *string        `env_var:"VAR_23"`
+	Var24       int64          `env_var:"VAR_24,1,k=1"`
 }
 
 var (
@@ -688,6 +697,23 @@ func TestKindParser(t *testing.T) {
 		{
 			b:    *testStruct.Var23NilPtr,
 			want: "prefix_" + testString,
+		},
+	}
+	testValues(t, testCasesB)
+}
+
+func TestParserWithParams(t *testing.T) {
+	testCaseA := []TestCaseA{
+		{
+			a:   strconv.FormatInt(testInt64, 10),
+			env: "VAR_24",
+		},
+	}
+	testStruct := initTestStruct(t, testCaseA, nil, testKindParsers)
+	testCasesB := []TestCaseB{
+		{
+			b:    testStruct.Var24,
+			want: testInt64 + 2,
 		},
 	}
 	testValues(t, testCasesB)
