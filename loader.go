@@ -112,7 +112,7 @@ var parsers = map[reflect.Kind]Parser{
 }
 
 func getEnv(st reflect.StructField) (val string, ok bool) {
-	if val, ok = st.Tag.Lookup(tag); ok {
+	if val, ok = st.Tag.Lookup(tag); ok && val != "" {
 		val, ok = os.LookupEnv(val)
 	}
 	return
