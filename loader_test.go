@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 )
 
 type TestCaseA struct {
@@ -56,6 +57,22 @@ func testValues(t *testing.T, testCases []TestCaseB) {
 			t.Errorf("b = %s; want %s", testCase.b, testCase.want)
 		}
 	}
+}
+
+var testTypeParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+	return time.ParseDuration(val)
+}
+
+var testTypeParsers = map[reflect.Type]Parser{
+	reflect.TypeOf(time.Nanosecond): testTypeParser,
+}
+
+var testKindParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+	return "prefix_" + val, nil
+}
+
+var testKindParsers = map[reflect.Kind]Parser{
+	reflect.String: testKindParser,
 }
 
 type TestItem struct {
@@ -109,15 +126,21 @@ type TestStruct struct {
 	Var17Ptr    *TestSubStruct     `env_var:"VAR_17"`
 	Var17NilPtr *TestSubStruct     `env_var:"VAR_17"`
 	Var18       string
-	Var19       complex64   `env_var:"VAR_19"`
-	Var19Ptr    *complex64  `env_var:"VAR_19"`
-	Var19NilPtr *complex64  `env_var:"VAR_19"`
-	Var20       complex128  `env_var:"VAR_20"`
-	Var20Ptr    *complex128 `env_var:"VAR_20"`
-	Var20NilPtr *complex128 `env_var:"VAR_20"`
-	Var21       bool        `env_var:"VAR_21"`
-	Var21Ptr    *bool       `env_var:"VAR_21"`
-	Var21NilPtr *bool       `env_var:"VAR_21"`
+	Var19       complex64      `env_var:"VAR_19"`
+	Var19Ptr    *complex64     `env_var:"VAR_19"`
+	Var19NilPtr *complex64     `env_var:"VAR_19"`
+	Var20       complex128     `env_var:"VAR_20"`
+	Var20Ptr    *complex128    `env_var:"VAR_20"`
+	Var20NilPtr *complex128    `env_var:"VAR_20"`
+	Var21       bool           `env_var:"VAR_21"`
+	Var21Ptr    *bool          `env_var:"VAR_21"`
+	Var21NilPtr *bool          `env_var:"VAR_21"`
+	Var22       time.Duration  `env_var:"VAR_22"`
+	Var22Ptr    *time.Duration `env_var:"VAR_22"`
+	Var22NilPtr *time.Duration `env_var:"VAR_22"`
+	Var23       string         `env_var:"VAR_23"`
+	Var23Ptr    *string        `env_var:"VAR_23"`
+	Var23NilPtr *string        `env_var:"VAR_23"`
 }
 
 var (
@@ -140,6 +163,7 @@ func newTestStruct() TestStruct {
 	testComplex64 := complex64(testComplex128)
 	testComplex128 := testComplex128
 	testBool := testBool
+	testNano := time.Nanosecond
 	return TestStruct{
 		Var1:     defaultString,
 		Var1Ptr:  &testString,
@@ -157,17 +181,19 @@ func newTestStruct() TestStruct {
 		Var19Ptr: &testComplex64,
 		Var20Ptr: &testComplex128,
 		Var21Ptr: &testBool,
+		Var22Ptr: &testNano,
+		Var23Ptr: &testString,
 	}
 }
 
-func initTestStruct(t *testing.T, testCasesA []TestCaseA) TestStruct {
+func initTestStruct(t *testing.T, testCasesA []TestCaseA, typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser) TestStruct {
 	if testCasesA != nil {
 		if err := setEnv(testCasesA); err != nil {
 			panic(err)
 		}
 	}
 	testStruct := newTestStruct()
-	if err := LoadEnv(&testStruct); err != nil {
+	if err := LoadEnvUserParser(&testStruct, typeParsers, kindParsers); err != nil {
 		t.Error(err)
 	}
 	if testCasesA != nil {
@@ -179,7 +205,7 @@ func initTestStruct(t *testing.T, testCasesA []TestCaseA) TestStruct {
 }
 
 func TestDefaultValue(t *testing.T) {
-	testStruct := initTestStruct(t, nil)
+	testStruct := initTestStruct(t, nil, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var1,
@@ -196,7 +222,7 @@ func TestLoadString(t *testing.T) {
 			env: "VAR_1",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var1,
@@ -258,7 +284,7 @@ func TestLoadInt(t *testing.T) {
 			env: "VAR_11",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var2,
@@ -347,7 +373,7 @@ func TestLoadFloat(t *testing.T) {
 			env: "VAR_13",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var12,
@@ -389,7 +415,7 @@ func TestLoadSlice(t *testing.T) {
 			env: "VAR_14",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var14,
@@ -419,7 +445,7 @@ func TestLoadMap(t *testing.T) {
 			env: "VAR_15",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var15,
@@ -449,7 +475,7 @@ func TestLoadStructSlice(t *testing.T) {
 			env: "VAR_16",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var16,
@@ -479,7 +505,7 @@ func TestLoadStruct(t *testing.T) {
 			env: "VAR_17",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var17,
@@ -504,7 +530,7 @@ func TestLoadSubStructVar(t *testing.T) {
 			env: "SUB_VAR",
 		},
 	}
-	testStruct := initTestStruct(t, testCasesA)
+	testStruct := initTestStruct(t, testCasesA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var17.Var,
@@ -541,7 +567,7 @@ func TestLoadNoTag(t *testing.T) {
 			env: "VAR_18",
 		},
 	}
-	testStruct := initTestStruct(t, testCasesA)
+	testStruct := initTestStruct(t, testCasesA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var18,
@@ -562,7 +588,7 @@ func TestLoadComplex(t *testing.T) {
 			env: "VAR_20",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var19,
@@ -599,7 +625,7 @@ func TestLoadBool(t *testing.T) {
 			env: "VAR_21",
 		},
 	}
-	testStruct := initTestStruct(t, testCaseA)
+	testStruct := initTestStruct(t, testCaseA, nil, nil)
 	testCasesB := []TestCaseB{
 		{
 			b:    testStruct.Var21,
@@ -612,6 +638,56 @@ func TestLoadBool(t *testing.T) {
 		{
 			b:    *testStruct.Var21NilPtr,
 			want: testBool,
+		},
+	}
+	testValues(t, testCasesB)
+}
+
+func TestTypeParser(t *testing.T) {
+	testCaseA := []TestCaseA{
+		{
+			a:   time.Second.String(),
+			env: "VAR_22",
+		},
+	}
+	testStruct := initTestStruct(t, testCaseA, testTypeParsers, nil)
+	testCasesB := []TestCaseB{
+		{
+			b:    testStruct.Var22,
+			want: time.Second,
+		},
+		{
+			b:    *testStruct.Var22Ptr,
+			want: time.Second,
+		},
+		{
+			b:    *testStruct.Var22NilPtr,
+			want: time.Second,
+		},
+	}
+	testValues(t, testCasesB)
+}
+
+func TestKindParser(t *testing.T) {
+	testCaseA := []TestCaseA{
+		{
+			a:   testString,
+			env: "VAR_23",
+		},
+	}
+	testStruct := initTestStruct(t, testCaseA, nil, testKindParsers)
+	testCasesB := []TestCaseB{
+		{
+			b:    testStruct.Var23,
+			want: "prefix_" + testString,
+		},
+		{
+			b:    *testStruct.Var23Ptr,
+			want: "prefix_" + testString,
+		},
+		{
+			b:    *testStruct.Var23NilPtr,
+			want: "prefix_" + testString,
 		},
 	}
 	testValues(t, testCasesB)
