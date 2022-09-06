@@ -26,7 +26,7 @@ import (
 
 const tag = "env_var"
 
-type parser func(t reflect.Type, val string) (interface{}, error)
+type Parser func(t reflect.Type, val string) (interface{}, error)
 
 var intBitSizeMap = map[reflect.Kind]int{
 	reflect.Int:    0,
@@ -49,7 +49,7 @@ var complexBitSizeMap = map[reflect.Kind]int{
 	reflect.Complex128: 128,
 }
 
-var intParser parser = func(t reflect.Type, val string) (interface{}, error) {
+var intParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 	i, err := strconv.ParseInt(val, 10, intBitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Int64 {
 		return i, err
@@ -58,7 +58,7 @@ var intParser parser = func(t reflect.Type, val string) (interface{}, error) {
 	}
 }
 
-var uintParser parser = func(t reflect.Type, val string) (interface{}, error) {
+var uintParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 	i, err := strconv.ParseUint(val, 10, intBitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Uint64 {
 		return i, err
@@ -67,7 +67,7 @@ var uintParser parser = func(t reflect.Type, val string) (interface{}, error) {
 	}
 }
 
-var floatParser parser = func(t reflect.Type, val string) (interface{}, error) {
+var floatParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 	f, err := strconv.ParseFloat(val, floatBitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Float64 {
 		return f, err
@@ -76,7 +76,7 @@ var floatParser parser = func(t reflect.Type, val string) (interface{}, error) {
 	}
 }
 
-var complexParser parser = func(t reflect.Type, val string) (interface{}, error) {
+var complexParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 	c, err := strconv.ParseComplex(val, complexBitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Complex128 {
 		return c, err
@@ -85,13 +85,13 @@ var complexParser parser = func(t reflect.Type, val string) (interface{}, error)
 	}
 }
 
-var jsonParser parser = func(t reflect.Type, val string) (interface{}, error) {
+var jsonParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 	v := reflect.New(t)
 	err := json.Unmarshal([]byte(val), v.Interface())
 	return v.Interface(), err
 }
 
-var parsers = map[reflect.Kind]parser{
+var parsers = map[reflect.Kind]Parser{
 	reflect.Uint:       uintParser,
 	reflect.Uint8:      uintParser,
 	reflect.Uint16:     uintParser,
