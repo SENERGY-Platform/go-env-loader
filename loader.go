@@ -28,29 +28,23 @@ const tag = "env_var"
 
 type Parser func(t reflect.Type, val string) (interface{}, error)
 
-var intBitSizeMap = map[reflect.Kind]int{
-	reflect.Int:    0,
-	reflect.Int16:  16,
-	reflect.Int32:  32,
-	reflect.Int64:  64,
-	reflect.Uint:   0,
-	reflect.Uint16: 16,
-	reflect.Uint32: 32,
-	reflect.Uint64: 64,
-}
-
-var floatBitSizeMap = map[reflect.Kind]int{
-	reflect.Float32: 32,
-	reflect.Float64: 64,
-}
-
-var complexBitSizeMap = map[reflect.Kind]int{
+var bitSizeMap = map[reflect.Kind]int{
+	reflect.Int:        0,
+	reflect.Int16:      16,
+	reflect.Int32:      32,
+	reflect.Int64:      64,
+	reflect.Uint:       0,
+	reflect.Uint16:     16,
+	reflect.Uint32:     32,
+	reflect.Uint64:     64,
+	reflect.Float32:    32,
+	reflect.Float64:    64,
 	reflect.Complex64:  64,
 	reflect.Complex128: 128,
 }
 
 var intParser Parser = func(t reflect.Type, val string) (interface{}, error) {
-	i, err := strconv.ParseInt(val, 10, intBitSizeMap[t.Kind()])
+	i, err := strconv.ParseInt(val, 10, bitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Int64 {
 		return i, err
 	} else {
@@ -59,7 +53,7 @@ var intParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 }
 
 var uintParser Parser = func(t reflect.Type, val string) (interface{}, error) {
-	i, err := strconv.ParseUint(val, 10, intBitSizeMap[t.Kind()])
+	i, err := strconv.ParseUint(val, 10, bitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Uint64 {
 		return i, err
 	} else {
@@ -68,7 +62,7 @@ var uintParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 }
 
 var floatParser Parser = func(t reflect.Type, val string) (interface{}, error) {
-	f, err := strconv.ParseFloat(val, floatBitSizeMap[t.Kind()])
+	f, err := strconv.ParseFloat(val, bitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Float64 {
 		return f, err
 	} else {
@@ -77,7 +71,7 @@ var floatParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 }
 
 var complexParser Parser = func(t reflect.Type, val string) (interface{}, error) {
-	c, err := strconv.ParseComplex(val, complexBitSizeMap[t.Kind()])
+	c, err := strconv.ParseComplex(val, bitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Complex128 {
 		return c, err
 	} else {
