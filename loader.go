@@ -124,7 +124,24 @@ func getEnv(st reflect.StructField) (val string, ok bool) {
 	return
 }
 
-func loadEnv(v reflect.Value) error {
+func getParser(typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser, fType reflect.Type) (parser Parser, ok bool) {
+	if typeParsers != nil {
+		if parser, ok = typeParsers[fType]; ok {
+			return
+		}
+	}
+	if kindParsers != nil {
+		if parser, ok = kindParsers[fType.Kind()]; ok {
+			return
+		}
+	}
+	if parser, ok = parsers[fType.Kind()]; ok {
+		return
+	}
+	return
+}
+
+func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser) error {
 	for i := 0; i < v.Type().NumField(); i++ {
 		structField := v.Type().Field(i)
 		if structField.PkgPath == "" {
@@ -144,7 +161,7 @@ func loadEnv(v reflect.Value) error {
 					fieldValue.Set(reflect.New(fieldType))
 					fieldValue = fieldValue.Elem()
 				}
-				if p, k := parsers[fieldType.Kind()]; k {
+				if p, k := getParser(typeParsers, kindParsers, fieldType); k {
 					if itf, err := p(fieldType, envVal); err != nil {
 						return err
 					} else {
@@ -169,7 +186,7 @@ func loadEnv(v reflect.Value) error {
 					}
 				}
 				if fieldValue.Kind() == reflect.Struct {
-					if err := loadEnv(fieldValue); err != nil {
+					if err := loadEnv(fieldValue, typeParsers, kindParsers); err != nil {
 						return err
 					}
 				}
@@ -179,14 +196,18 @@ func loadEnv(v reflect.Value) error {
 	return nil
 }
 
-func LoadEnv(itf interface{}) error {
+func LoadEnvUserParser(itf interface{}, typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser) error {
 	if v := reflect.ValueOf(itf); v.Kind() == reflect.Ptr {
 		if v = v.Elem(); v.Kind() == reflect.Struct {
-			return loadEnv(v)
+			return loadEnv(v, typeParsers, kindParsers)
 		} else {
 			panic(fmt.Sprintf("'%s' provided but '%s' required", v.Kind(), reflect.Struct))
 		}
 	} else {
 		panic(fmt.Sprintf("'%s' provided but '%s' required", v.Kind(), reflect.Ptr))
 	}
+}
+
+func LoadEnv(itf interface{}) error {
+	return LoadEnvUserParser(itf, nil, nil)
 }
