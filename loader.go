@@ -22,11 +22,14 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 const tag = "env_var"
+const separator = ","
+const equal = "="
 
-type Parser func(t reflect.Type, val string) (interface{}, error)
+type Parser func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error)
 
 var bitSizeMap = map[reflect.Kind]int{
 	reflect.Int:        0,
@@ -43,7 +46,7 @@ var bitSizeMap = map[reflect.Kind]int{
 	reflect.Complex128: 128,
 }
 
-var intParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+var intParser Parser = func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 	i, err := strconv.ParseInt(val, 10, bitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Int64 {
 		return i, err
@@ -52,7 +55,7 @@ var intParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 	}
 }
 
-var uintParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+var uintParser Parser = func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 	i, err := strconv.ParseUint(val, 10, bitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Uint64 {
 		return i, err
@@ -61,7 +64,7 @@ var uintParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 	}
 }
 
-var floatParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+var floatParser Parser = func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 	f, err := strconv.ParseFloat(val, bitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Float64 {
 		return f, err
@@ -70,7 +73,7 @@ var floatParser Parser = func(t reflect.Type, val string) (interface{}, error) {
 	}
 }
 
-var complexParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+var complexParser Parser = func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 	c, err := strconv.ParseComplex(val, bitSizeMap[t.Kind()])
 	if t.Kind() == reflect.Complex128 {
 		return c, err
@@ -79,7 +82,7 @@ var complexParser Parser = func(t reflect.Type, val string) (interface{}, error)
 	}
 }
 
-var jsonParser Parser = func(t reflect.Type, val string) (interface{}, error) {
+var jsonParser Parser = func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 	v := reflect.New(t)
 	err := json.Unmarshal([]byte(val), v.Interface())
 	return v.Interface(), err
@@ -100,10 +103,10 @@ var parsers = map[reflect.Kind]Parser{
 	reflect.Float64:    floatParser,
 	reflect.Complex64:  complexParser,
 	reflect.Complex128: complexParser,
-	reflect.Bool: func(t reflect.Type, val string) (interface{}, error) {
+	reflect.Bool: func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 		return strconv.ParseBool(val)
 	},
-	reflect.String: func(t reflect.Type, val string) (interface{}, error) {
+	reflect.String: func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error) {
 		return val, nil
 	},
 	reflect.Slice:  jsonParser,
@@ -111,9 +114,23 @@ var parsers = map[reflect.Kind]Parser{
 	reflect.Struct: jsonParser,
 }
 
-func getEnv(st reflect.StructField) (val string, ok bool) {
+func getEnv(st reflect.StructField) (val string, params []string, kwParams map[string]string, ok bool) {
 	if val, ok = st.Tag.Lookup(tag); ok && val != "" {
-		val, ok = os.LookupEnv(val)
+		parts := strings.Split(val, separator)
+		if len(parts) > 1 {
+			for _, v := range parts[1:] {
+				if strings.Contains(v, equal) {
+					if kwParams == nil {
+						kwParams = make(map[string]string)
+					}
+					kp := strings.Split(v, equal)
+					kwParams[kp[0]] = kp[1]
+				} else {
+					params = append(params, v)
+				}
+			}
+		}
+		val, ok = os.LookupEnv(parts[0])
 	}
 	return
 }
@@ -148,7 +165,7 @@ func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers m
 					fieldValue = fieldValue.Elem()
 				}
 			}
-			if envVal, ok := getEnv(structField); ok {
+			if envVal, params, kwParams, ok := getEnv(structField); ok {
 				fieldType := fieldValue.Type()
 				if isNilPtr {
 					fieldType = fieldValue.Type().Elem()
@@ -156,7 +173,7 @@ func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers m
 					fieldValue = fieldValue.Elem()
 				}
 				if p, k := getParser(typeParsers, kindParsers, fieldType); k {
-					if itf, err := p(fieldType, envVal); err != nil {
+					if itf, err := p(fieldType, envVal, params, kwParams); err != nil {
 						return err
 					} else {
 						itfValue := reflect.Indirect(reflect.ValueOf(itf))
@@ -169,7 +186,7 @@ func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers m
 					var hasEnvVal bool
 					for x := 0; x < fieldValue.Type().Elem().NumField(); x++ {
 						st := fieldValue.Type().Elem().Field(x)
-						if _, k := getEnv(st); k {
+						if _, _, _, k := getEnv(st); k {
 							hasEnvVal = true
 							break
 						}
