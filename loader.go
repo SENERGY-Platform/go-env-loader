@@ -25,8 +25,10 @@ import (
 	"strings"
 )
 
-const tag = "env_var"
-const separator = ","
+const varTag = "env_var"
+const parserTag = "env_parser"
+const paramsTag = "env_params"
+const separator = ";"
 const equal = "="
 
 type Parser func(t reflect.Type, val string, params []string, kwParams map[string]string) (interface{}, error)
@@ -114,11 +116,15 @@ var parsers = map[reflect.Kind]Parser{
 	reflect.Struct: jsonParser,
 }
 
-func getEnv(st reflect.StructField) (val string, params []string, kwParams map[string]string, ok bool) {
-	if val, ok = st.Tag.Lookup(tag); ok && val != "" {
-		parts := strings.Split(val, separator)
-		if len(parts) > 1 {
-			for _, v := range parts[1:] {
+func getEnv(st reflect.StructField) (val string, parserKw string, params []string, kwParams map[string]string, ok bool) {
+	if val, ok = st.Tag.Lookup(varTag); ok && val != "" {
+		val, ok = os.LookupEnv(val)
+		if psr, k := st.Tag.Lookup(parserTag); k && psr != "" {
+			parserKw = psr
+		}
+		if prms, k := st.Tag.Lookup(paramsTag); k && prms != "" {
+			parts := strings.Split(prms, separator)
+			for _, v := range parts {
 				if strings.Contains(v, equal) {
 					if kwParams == nil {
 						kwParams = make(map[string]string)
@@ -130,12 +136,16 @@ func getEnv(st reflect.StructField) (val string, params []string, kwParams map[s
 				}
 			}
 		}
-		val, ok = os.LookupEnv(parts[0])
 	}
 	return
 }
 
-func getParser(typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser, fType reflect.Type) (parser Parser, ok bool) {
+func getParser(kwParsers map[string]Parser, typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser, parserKw string, fType reflect.Type) (parser Parser, ok bool) {
+	if parserKw != "" && kwParsers != nil {
+		if parser, ok = kwParsers[parserKw]; ok {
+			return
+		}
+	}
 	if typeParsers != nil {
 		if parser, ok = typeParsers[fType]; ok {
 			return
@@ -152,7 +162,7 @@ func getParser(typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind
 	return
 }
 
-func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser) error {
+func loadEnv(v reflect.Value, kwParsers map[string]Parser, typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser) error {
 	for i := 0; i < v.Type().NumField(); i++ {
 		structField := v.Type().Field(i)
 		if structField.PkgPath == "" {
@@ -165,14 +175,14 @@ func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers m
 					fieldValue = fieldValue.Elem()
 				}
 			}
-			if envVal, params, kwParams, ok := getEnv(structField); ok {
+			if envVal, parserKw, params, kwParams, ok := getEnv(structField); ok {
 				fieldType := fieldValue.Type()
 				if isNilPtr {
 					fieldType = fieldValue.Type().Elem()
 					fieldValue.Set(reflect.New(fieldType))
 					fieldValue = fieldValue.Elem()
 				}
-				if p, k := getParser(typeParsers, kindParsers, fieldType); k {
+				if p, k := getParser(kwParsers, typeParsers, kindParsers, parserKw, fieldType); k {
 					if itf, err := p(fieldType, envVal, params, kwParams); err != nil {
 						return err
 					} else {
@@ -186,7 +196,7 @@ func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers m
 					var hasEnvVal bool
 					for x := 0; x < fieldValue.Type().Elem().NumField(); x++ {
 						st := fieldValue.Type().Elem().Field(x)
-						if _, _, _, k := getEnv(st); k {
+						if _, _, _, _, k := getEnv(st); k {
 							hasEnvVal = true
 							break
 						}
@@ -197,7 +207,7 @@ func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers m
 					}
 				}
 				if fieldValue.Kind() == reflect.Struct {
-					if err := loadEnv(fieldValue, typeParsers, kindParsers); err != nil {
+					if err := loadEnv(fieldValue, kwParsers, typeParsers, kindParsers); err != nil {
 						return err
 					}
 				}
@@ -207,10 +217,10 @@ func loadEnv(v reflect.Value, typeParsers map[reflect.Type]Parser, kindParsers m
 	return nil
 }
 
-func LoadEnvUserParser(itf interface{}, typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser) error {
+func LoadEnvUserParser(itf interface{}, keywordParsers map[string]Parser, typeParsers map[reflect.Type]Parser, kindParsers map[reflect.Kind]Parser) error {
 	if v := reflect.ValueOf(itf); v.Kind() == reflect.Ptr {
 		if v = v.Elem(); v.Kind() == reflect.Struct {
-			return loadEnv(v, typeParsers, kindParsers)
+			return loadEnv(v, keywordParsers, typeParsers, kindParsers)
 		} else {
 			panic(fmt.Sprintf("'%s' provided but '%s' required", v.Kind(), reflect.Struct))
 		}
@@ -220,5 +230,5 @@ func LoadEnvUserParser(itf interface{}, typeParsers map[reflect.Type]Parser, kin
 }
 
 func LoadEnv(itf interface{}) error {
-	return LoadEnvUserParser(itf, nil, nil)
+	return LoadEnvUserParser(itf, nil, nil, nil)
 }
