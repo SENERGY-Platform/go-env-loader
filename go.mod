@@ -1,3 +1,5 @@
-module github.com/y-du/go-env-loader
+module github.com/SENERGY-Platform/go-env-loader
 
-go 1.22
+go 1.23
+
+toolchain go1.23.6
