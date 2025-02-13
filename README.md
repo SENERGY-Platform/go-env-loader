@@ -1,8 +1,8 @@
 go-env-loader
 =======
 
-[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/y-du/go-env-loader?label=latest)](https://github.com/y-du/go-env-loader/tags)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/y-du/go-env-loader/Tests?label=tests)](https://github.com/y-du/go-env-loader/actions/workflows/tests.yml)
+[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/SENERGY-Platform/go-env-loader?label=latest)](https://github.com/SENERGY-Platform/go-env-loader/tags)
+
 
 
 Load values for struct fields from environment variables defined via tags. Supports basic types, slices, maps and structs!
